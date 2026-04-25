@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface text-white font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1A1A1A;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #D4AF37;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface-raised/50 border border-white/10 backdrop-blur-md rounded-xl;
+  }
+
+  .gold-button {
+    @apply bg-gold hover:bg-gold-light text-black font-semibold px-4 py-2 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .secondary-button {
+    @apply bg-surface-top hover:bg-surface-top/80 text-white font-medium px-4 py-2 rounded-lg border border-white/10 transition-all;
+  }
+
+  .input-field {
+    @apply bg-surface-top border border-white/10 rounded-lg px-4 py-2 focus:border-gold outline-none transition-all text-white;
+  }
+}
