@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import QRScanner from "../QRScanner";
-import {
-  ShoppingCart,
-} from "lucide-react";
-
+import { ShoppingCart } from "lucide-react";
 import { useStore } from "../../context/StoreContext";
 import { Product } from "../../types";
 import { formatCurrency } from "../../lib/utils";
@@ -11,49 +8,87 @@ import { formatCurrency } from "../../lib/utils";
 export const Sales: React.FC = () => {
   const { products, recordSale, config } = useStore();
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [cart, setCart] = useState<Product[]>([]);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
-  // ✅ عند قراءة QR
+  // 🔍 scan → preview
   const handleScan = (qrCode: string) => {
     const product = products.find((p) => p.id === qrCode);
 
-    if (product) {
-      setSelectedProduct(product);
-      setShowScanner(false);
-    } else {
-      alert("Product not found");
+    if (!product) {
+      alert("Product not found ❌");
+      return;
     }
+
+    setPreviewProduct(product);
+    setShowScanner(false);
   };
 
-  // ✅ بيع مباشر
-  const handleQuickSale = async () => {
-    if (!selectedProduct) return;
+  // ✅ confirm → cart
+  const confirmProduct = () => {
+    if (!previewProduct) return;
 
-    const price =
-      selectedProduct.weight *
-        config.prices[selectedProduct.karat] +
-      selectedProduct.makingCost;
+    setCart((prev) => [previewProduct, ...prev]);
+    setPreviewProduct(null);
+  };
 
+  // ❌ cancel preview
+  const cancelPreview = () => {
+    setPreviewProduct(null);
+  };
+
+  // 🗑 remove
+  const removeFromCart = (id: string) => {
+    setCart((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // 💰 total
+  const totalPrice = cart.reduce((sum, p) => {
+    return sum + (p.weight * config.prices[p.karat] + p.makingCost);
+  }, 0);
+
+  // 🧾 checkout
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+  
     await recordSale({
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      finalPrice: price,
+      productId: "multi",
+      productName: '${cart.length} items',
+      finalPrice: totalPrice,
       discount: 0,
       paymentMethod: "CASH",
       customerName: "",
       customerPhone: "",
       staffId: "staff-1",
     });
-
+  
     alert("Sale completed ✅");
-    setSelectedProduct(null);
+    setCart([]);
   };
+  // const handleCheckout = async () => {
+  //   if (cart.length === 0) return;
+
+  //   await recordSale({
+  //     productId: "multi",
+  //     productName: '${cart.length} items',
+  //     finalPrice: totalPrice,
+  //     discount: 0,
+  //     paymentMethod: "CASH",
+  //     customerName: "",
+  //     customerPhone: "",
+  //     staffId: "staff-1",
+  //   });
+
+  //   alert("Sale completed ✅");
+  //   setCart([]);
+  // };
 
   return (
     <div className="p-6 space-y-4">
 
-      {/* 🔘 زر Scan */}
+      {/* 🔘 Scan */}
       <button
         onClick={() => setShowScanner(true)}
         className="w-full bg-yellow-500 text-black py-3 rounded font-bold"
@@ -68,41 +103,89 @@ export const Sales: React.FC = () => {
         </div>
       )}
 
-      {/* 📦 المنتج المختار */}
-      {selectedProduct ? (
-        <div className="bg-white/5 p-4 rounded space-y-3">
-          <h2 className="text-lg font-bold">{selectedProduct.name}</h2>
+      {/* 👁 Preview */}
+      {previewProduct && (
+        <div className="bg-white/5 p-4 rounded space-y-3 border border-yellow-500">
+          <h2 className="text-lg font-bold">{previewProduct.name}</h2>
 
           <p>
-            Weight: {selectedProduct.weight}g | Karat:{" "}
-            {selectedProduct.karat}
+            {previewProduct.weight}g | {previewProduct.karat}
           </p>
 
           <p>
-            Price:{" "}
             {formatCurrency(
-              selectedProduct.weight *
-                config.prices[selectedProduct.karat] +
-                selectedProduct.makingCost
+              previewProduct.weight *
+                config.prices[previewProduct.karat] +
+                previewProduct.makingCost
             )}
           </p>
 
-          {/* 💰 بيع مباشر */}
+          <div className="flex gap-2">
+            <button
+              onClick={confirmProduct}
+              className="flex-1 bg-green-500 py-2 rounded"
+            >
+              Confirm
+            </button>
+
+            <button
+              onClick={cancelPreview}
+              className="flex-1 bg-red-500 py-2 rounded"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🛒 Cart */}
+      {cart.length > 0 && (
+        <div className="space-y-3">
+
+          {cart.map((p) => {
+            const price =
+              p.weight * config.prices[p.karat] + p.makingCost;
+
+            return (
+              <div
+                key={p.id}
+                className="bg-white/5 p-3 rounded flex justify-between items-center"
+              >
+                <div>
+                  <p className="font-bold">{p.name}</p>
+                  <p className="text-sm text-white/40">
+                    {formatCurrency(price)}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => removeFromCart(p.id)}
+                  className="text-red-400 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
+
+{/* total */}
+          <div className="bg-white/10 p-4 rounded flex justify-between font-bold">
+            <span>Total</span>
+            <span>{formatCurrency(totalPrice)}</span>
+          </div>
+
+          {/* checkout */}
           <button
-            onClick={handleQuickSale}
-            className="w-full bg-green-500 py-2 rounded"
+            onClick={handleCheckout}
+            className="w-full bg-green-500 py-3 rounded font-bold"
           >
             Complete Sale
           </button>
-
-          <button
-            onClick={() => setSelectedProduct(null)}
-            className="w-full text-sm text-white/40"
-          >
-            Cancel
-          </button>
         </div>
-      ) : (
+      )}
+
+      {/* empty */}
+      {!previewProduct && cart.length === 0 && (
         <div className="flex flex-col items-center justify-center h-60 text-white/30">
           <ShoppingCart size={40} />
           <p>No product selected</p>
