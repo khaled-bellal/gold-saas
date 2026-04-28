@@ -5,16 +5,31 @@ import { useStore } from "../../context/StoreContext";
 import { Product } from "../../types";
 import { formatCurrency } from "../../lib/utils";
 
+type CartItem = {
+  product: Product;
+  qty: number;
+};
+
 export const Sales: React.FC = () => {
   const { products, recordSale, config } = useStore();
 
-  const [cart, setCart] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
-  // 🔍 scan → preview
+  // 🔥 FIX SCAN
   const handleScan = (qrCode: string) => {
-    const product = products.find((p) => p.id === qrCode);
+    console.log("RAW QR:", qrCode);
+
+    let cleanCode = qrCode.trim();
+
+    // محاولة parsing (لو QR فيه JSON)
+    try {
+      const parsed = JSON.parse(qrCode);
+      cleanCode = parsed.id;
+    } catch {}
+
+    const product = products.find((p) => p.id === cleanCode);
 
     if (!product) {
       alert("Product not found ❌");
@@ -25,37 +40,49 @@ export const Sales: React.FC = () => {
     setShowScanner(false);
   };
 
-  // ✅ confirm → cart
+  // ➕ add to cart
   const confirmProduct = () => {
     if (!previewProduct) return;
 
-    setCart((prev) => [previewProduct, ...prev]);
+    setCart((prev) => {
+      const exist = prev.find(
+        (item) => item.product.id === previewProduct.id
+      );
+
+      if (exist) {
+        return prev.map((item) =>
+          item.product.id === previewProduct.id
+            ? { ...item, qty: item.qty + 1 }
+            : item
+        );
+      }
+
+      return [{ product: previewProduct, qty: 1 }, ...prev];
+    });
+
     setPreviewProduct(null);
   };
 
-  // ❌ cancel preview
-  const cancelPreview = () => {
-    setPreviewProduct(null);
-  };
-
-  // 🗑 remove
+  // ❌ remove
   const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((p) => p.id !== id));
+    setCart((prev) => prev.filter((i) => i.product.id !== id));
   };
 
   // 💰 total
-  const totalPrice = cart.reduce((sum, p) => {
-    return sum + (p.weight * config.prices[p.karat] + p.makingCost);
+  const totalPrice = cart.reduce((sum, item) => {
+    const p = item.product;
+    const price =
+      p.weight * config.prices[p.karat] + p.makingCost;
+    return sum + price * item.qty;
   }, 0);
 
   // 🧾 checkout
-
   const handleCheckout = async () => {
     if (cart.length === 0) return;
-  
+
     await recordSale({
       productId: "multi",
-      productName: '${cart.length} items',
+      productName: `${cart.length} items`,
       finalPrice: totalPrice,
       discount: 0,
       paymentMethod: "CASH",
@@ -63,32 +90,14 @@ export const Sales: React.FC = () => {
       customerPhone: "",
       staffId: "staff-1",
     });
-  
+
     alert("Sale completed ✅");
     setCart([]);
   };
-  // const handleCheckout = async () => {
-  //   if (cart.length === 0) return;
-
-  //   await recordSale({
-  //     productId: "multi",
-  //     productName: '${cart.length} items',
-  //     finalPrice: totalPrice,
-  //     discount: 0,
-  //     paymentMethod: "CASH",
-  //     customerName: "",
-  //     customerPhone: "",
-  //     staffId: "staff-1",
-  //   });
-
-  //   alert("Sale completed ✅");
-  //   setCart([]);
-  // };
 
   return (
     <div className="p-6 space-y-4">
-
-      {/* 🔘 Scan */}
+      {/* 🔘 scan button */}
       <button
         onClick={() => setShowScanner(true)}
         className="w-full bg-yellow-500 text-black py-3 rounded font-bold"
@@ -96,17 +105,19 @@ export const Sales: React.FC = () => {
         Scan Product (QR)
       </button>
 
-      {/* 📷 Scanner */}
+      {/* 📷 scanner */}
       {showScanner && (
         <div className="bg-black p-4 rounded">
           <QRScanner onScan={handleScan} />
         </div>
       )}
 
-      {/* 👁 Preview */}
+      {/* 👁 preview */}
       {previewProduct && (
         <div className="bg-white/5 p-4 rounded space-y-3 border border-yellow-500">
-          <h2 className="text-lg font-bold">{previewProduct.name}</h2>
+          <h2 className="text-lg font-bold">
+            {previewProduct.name}
+          </h2>
 
           <p>
             {previewProduct.weight}g | {previewProduct.karat}
@@ -129,7 +140,7 @@ export const Sales: React.FC = () => {
             </button>
 
             <button
-              onClick={cancelPreview}
+              onClick={() => setPreviewProduct(null)}
               className="flex-1 bg-red-500 py-2 rounded"
             >
               Cancel
@@ -138,23 +149,24 @@ export const Sales: React.FC = () => {
         </div>
       )}
 
-      {/* 🛒 Cart */}
+      {/* 🛒 cart */}
       {cart.length > 0 && (
         <div className="space-y-3">
-
-          {cart.map((p) => {
+          {cart.map((item) => {
+            const p = item.product;
             const price =
-              p.weight * config.prices[p.karat] + p.makingCost;
+              p.weight * config.prices[p.karat] +
+              p.makingCost;
 
-            return (
+return (
               <div
                 key={p.id}
-                className="bg-white/5 p-3 rounded flex justify-between items-center"
+                className="bg-white/5 p-3 rounded flex justify-between"
               >
                 <div>
                   <p className="font-bold">{p.name}</p>
                   <p className="text-sm text-white/40">
-                    {formatCurrency(price)}
+                    {formatCurrency(price)} x {item.qty}
                   </p>
                 </div>
 
@@ -168,13 +180,11 @@ export const Sales: React.FC = () => {
             );
           })}
 
-{/* total */}
           <div className="bg-white/10 p-4 rounded flex justify-between font-bold">
             <span>Total</span>
             <span>{formatCurrency(totalPrice)}</span>
           </div>
 
-          {/* checkout */}
           <button
             onClick={handleCheckout}
             className="w-full bg-green-500 py-3 rounded font-bold"
@@ -194,7 +204,6 @@ export const Sales: React.FC = () => {
     </div>
   );
 };
-
 
 // import React, { useState } from "react";
 // import QRScanner from "../QRScanner";
