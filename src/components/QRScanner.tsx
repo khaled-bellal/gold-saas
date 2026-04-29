@@ -7,9 +7,12 @@ interface Props {
 
 export default function QRScanner({ onScan }: Props) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isRunningRef = useRef(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
+    if (startedRef.current) return; // يمنع double start (React Strict Mode)
+    startedRef.current = true;
+
     const scanner = new Html5Qrcode("reader");
     scannerRef.current = scanner;
 
@@ -17,39 +20,33 @@ export default function QRScanner({ onScan }: Props) {
       .start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
+
+        // ✅ success
         (decodedText) => {
-          console.log("SCANNED:", decodedText); // مهم
+          console.log("SCANNED:", decodedText);
 
           onScan(decodedText);
 
-          if (isRunningRef.current) {
-            scanner
-              .stop()
-              .then(() => {
-                isRunningRef.current = false;
-                scanner.clear();
-              })
-              .catch(() => {});
-          }
+          // 🔥 stop safe
+          scanner
+            .stop()
+            .then(() => scanner.clear())
+            .catch(() => {});
         },
+
+        // ✅ failure (مهم باش تسكت errors)
         () => {}
       )
-      .then(() => {
-        isRunningRef.current = true;
-      })
       .catch((err) => {
-        console.error("Camera error:", err);
-        alert("Camera not working ❌");
+        console.error("Start error:", err);
       });
 
     return () => {
-      if (scannerRef.current && isRunningRef.current) {
+      // 🔥 cleanup safe
+      if (scannerRef.current) {
         scannerRef.current
           .stop()
-          .then(() => {
-            isRunningRef.current = false;
-            scannerRef.current?.clear();
-          })
+          .then(() => scannerRef.current?.clear())
           .catch(() => {});
       }
     };

@@ -99,11 +99,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   ) => {
     const newProduct: Product = {
       ...productData,
-      id: generateId(),
+      id: crypto.randomUUID(), // 🔥 مهم
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-
+  
     setProducts((prev) => [newProduct, ...prev]);
   };
 

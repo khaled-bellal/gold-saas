@@ -32,6 +32,7 @@ export const Sales: React.FC = () => {
     const product = products.find((p) => p.id === cleanCode);
 
     if (!product) {
+      console.log("Not Found ID", cleanCode)
       alert("Product not found ❌");
       return;
     }

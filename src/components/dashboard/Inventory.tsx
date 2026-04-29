@@ -90,7 +90,7 @@ export const Inventory: React.FC = () => {
                 value={selectedProduct.id} 
                 size={200} 
                 level="H" 
-                includeMargin={true}
+                marginSize={4}
               />
             </div>
 
